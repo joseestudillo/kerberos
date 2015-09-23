@@ -17,11 +17,6 @@
 For further information go to [kerberos official site][kerberos-official-site]
 
 
-
-# How does it work?
-
-- How to get a ticket: `kinit USERNAME`
-
 # How to's
 
 ## Login using keytab
@@ -190,7 +185,7 @@ Re-enter KDC database master key to verify:
 
 - add a principal, in this case I will use `root`:
 
-/usr/kerberos/sbin/kadmin.local -q "addprinc root/admin"
+`/usr/kerberos/sbin/kadmin.local -q "addprinc root/admin"`
   
 - start the services:
 
@@ -260,13 +255,6 @@ generating a keytab file with all the principals is not a good practice but it w
 xst -norandkey -k /tmp/full-keytab.keytab HTTP/sandbox.hortonworks.com@HORTONWORKS.COM K/M@HORTONWORKS.COM ambari-qa-Sandbox@HORTONWORKS.COM amshbase/sandbox.hortonworks.com@HORTONWORKS.COM amszk/sandbox.hortonworks.com@HORTONWORKS.COM atlas/sandbox.hortonworks.com@HORTONWORKS.COM dn/sandbox.hortonworks.com@HORTONWORKS.COM falcon/sandbox.hortonworks.com@HORTONWORKS.COM hbase-Sandbox@HORTONWORKS.COM hbase/sandbox.hortonworks.com@HORTONWORKS.COM hdfs-Sandbox@HORTONWORKS.COM hive/sandbox.hortonworks.com@HORTONWORKS.COM jhs/sandbox.hortonworks.com@HORTONWORKS.COM kadmin/admin@HORTONWORKS.COM kadmin/changepw@HORTONWORKS.COM kadmin/sandbox.hortonworks.com@HORTONWORKS.COM kafka/sandbox.hortonworks.com@HORTONWORKS.COM knox/sandbox.hortonworks.com@HORTONWORKS.COM krbtgt/HORTONWORKS.COM@HORTONWORKS.COM nfs/sandbox.hortonworks.com@HORTONWORKS.COM nimbus/sandbox.hortonworks.com@HORTONWORKS.COM nm/sandbox.hortonworks.com@HORTONWORKS.COM nn/sandbox.hortonworks.com@HORTONWORKS.COM oozie/sandbox.hortonworks.com@HORTONWORKS.COM rm/sandbox.hortonworks.com@HORTONWORKS.COM root/admin@HORTONWORKS.COM spark-Sandbox@HORTONWORKS.COM storm@HORTONWORKS.COM yarn/sandbox.hortonworks.com@HORTONWORKS.COM zookeeper/sandbox.hortonworks.com@HORTONWORKS.COM
 ```
 Now we can copy the file `/tmp/full-keytab.keytab` to the client computer to access to the different services.
-
-
-## Fixing access problems after restarting
-
-set the principals to use the proper host
-
-grep -l -r "\/_HOST" /etc/hadoop/ | xargs sed -i -e "s&/_HOST&/sandbox.hortonworks.com&g"
 
 
 # Accesing to services
