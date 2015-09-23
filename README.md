@@ -21,13 +21,7 @@ For further information go to [kerberos official site][kerberos-official-site]
 
 ## Login using keytab
 
-in any linux distribution:
-
-`kinit <PRINCIPAL> -k -t <KEYTAB_FILE_PATH>` 
-
-as always mac being... different...
-
-`kinit --use-keytab --keytab=<KEYTAB_FILE_PATH> <PRINCIPAL>`
+kinit -k -t <KEYTAB_FILE_PATH> <PRINCIPAL>
 
 ## Get all principals
 
@@ -159,7 +153,9 @@ chkconfig kadmin on
 
 Install the following packages `yum -y install krb5-libs krb5-auth-dialog krb5-workstation` and then create the file `/etc/krb5.conf` with the same Kerberos configuration set in the cluster, then use `kinit <PRINCIPAL>` to test the access.
 
+
 # Mac OSX
+
 
 ## Client Installation
 
