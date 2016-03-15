@@ -10,18 +10,26 @@
 
 - _keytab_: A keytab is a file containing pairs of Kerberos principals and encrypted keys (which are derived from the Kerberos password). You can use a keytab file to authenticate to various remote systems using Kerberos without entering a password.
 
-- _KDC_: Key Distribution center. It consists in an _Authentication Server_ and a _Ticket Granting Server_. 
+- _KDC_: Key Distribution center. It consists in an _Authentication Server_ and a _Ticket Granting Server_.
 
-- _Service or host machine_: the machine to access to. 
+- _Service or host machine_: the machine to access to.
 
 For further information go to [kerberos official site][kerberos-official-site]
 
 
 # How to's
 
+## Login
+
+`kinit \<PRINCIPAL\>`
+
 ## Login using keytab
 
-kinit -k -t <KEYTAB_FILE_PATH> <PRINCIPAL>
+`kinit -k -t \<KEYTAB_FILE_PATH\> \<PRINCIPAL\>`
+
+## Logout
+
+`kdestroy -A`
 
 ## Get all principals
 
@@ -29,7 +37,7 @@ type `kadmin.local` once logged in `listprincs`
 
 ## Create a keytab file
 
-type `kadmin.local` once logged in `xst -norandkey -k <KEYTAB_FILE_PATH> PRINCIPALS_CSV`. This will generate a file containing all the given principals.
+type `kadmin.local` once logged in `xst -norandkey -k <KEYTAB_FILE_PATH> <PRINCIPALS_CSV>`. This will generate a file containing all the given principals.
 
 ## Reset admin password
 
@@ -37,19 +45,17 @@ type `kadmin.local` once logged in `change_password <PRINCIPAL>`.
 
 `kadmin.local` has more privileges that `kadmin` so it is advisable to use in certain cases (for example to reset the admin password as you are not required to login).
 
-
 ## Changing renewal time
 
 type `kadmin.local` once logged in `modprinc -maxrenewlife 1day <PRINCIPAL>`.
 
-
-# CentOS 
+# CentOS
 
 ## Kerberos Server Installation
 
 This guide is intended to do a quick installation of kerberos in centos. It is based on the official CentOS [documentation][kerberos-centos-doc]
 
-When Kerberos is used accross many servers Host visibility and time syncronization is required. Refer to the official documentation to configure this. 
+When Kerberos is used accross many servers Host visibility and time syncronization is required. Refer to the official documentation to configure this.
 
 - Install kerberos packages:
 
@@ -86,9 +92,9 @@ Default content
  .joseestudillo.com = JOSEESTUDILLO.COM
  joseestudillo.com = JOSEESTUDILLO.COM
 ```  
-  
+
 - KDC configuration file `/var/kerberos/krb5kdc/kdc.conf`:
-  
+
 ```bash
 [kdcdefaults]
  kdc_ports = 88
@@ -107,11 +113,11 @@ Default content
 - Once the the file above have been created, It is required to initialize the database that stores keys for the Kerberos realms:
 
 ```bash
-/usr/kerberos/sbin/kdb5_util create -s
+kdb5_util create -s
 ```
 
 the database will be created by default under `/var/kerberos/krb5kdc/`
- 
+
 - create the file `/var/kerberos/krb5kdc/kadm5.acl`:
 
 ```bash
@@ -124,22 +130,29 @@ This file is used by `kadmin` to determine which principals have administrative 
 - Create a principal
 
 ```bash
-/usr/kerberos/sbin/kadmin.local -q "addprinc <USERNAME>/admin"
+kadmin.local -q "addprinc <USERNAME>/admin"
 ```
 
 to for example create a principal for myself:
 
 ```bash
-/usr/kerberos/sbin/kadmin.local -q "addprinc jose/admin"
+kadmin.local -q "addprinc joseestudillo/admin"
 ```
-so the generated principal would be `jose/admin@JOSEESTUDILLO.COM`
+so the generated principal would be `joseestudillo/admin@JOSEESTUDILLO.COM`
 
+- ensure that the server names can be resolved:
+
+/etc/hosts:
+
+```bash
+127.0.0.1 kerberos.joseestudillo.com
+```
 
 - start services:
 
 ```bash
-/sbin/service krb5kdc start
-/sbin/service kadmin start
+service krb5kdc start
+service kadmin start
 ```
 
 It is recommended to start these start these services when the box starts:
@@ -182,7 +195,7 @@ Re-enter KDC database master key to verify:
 - add a principal, in this case I will use `root`:
 
 `/usr/kerberos/sbin/kadmin.local -q "addprinc root/admin"`
-  
+
 - start the services:
 
 `service krb5kdc start && service kadmin start`
@@ -262,7 +275,7 @@ set the principals to use the proper host
 
 
 
-# Accesing to services
+# Accessing to services
 
 
 ## Hive
@@ -300,12 +313,12 @@ Besides adding the principal information in the JDBC string
 `jdbc:hive2://sandbox.hortonworks.com:10000/default\;principal=<HIVE_PRINCIPAL>`
 
 You need to add the following
- 
+
 ```Java
 private static final String HADOOP_AUTH_PROP = "hadoop.security.authentication";
 private static final String HADOOP_AUTH_VAL_KERBEROS = "kerberos";
 
-... 
+...
 
 if (!principal.isEmpty() && !keytabPath.isEmpty()) {
 	log.info("Configuring kerberos access...");
@@ -334,21 +347,176 @@ WARN ipc.Client: Exception encountered while connecting to the server : javax.se
 ls: Failed on local exception: java.io.IOException: javax.security.sasl.SaslException: GSS initiate failed [Caused by GSSException: No valid credentials provided (Mechanism level: Failed to find any Kerberos tgt)]; Host Details : local host is: "<MY_HOSTNAME>"; destination host is: "sandbox.hortonworks.com":8020;
 ```
 
-even having a valid kerberos ticket locally. 
+even having a valid kerberos ticket locally.
 
 [TODO FIX]
 
 ## HDFS Hadoop API
 
-This case will be similar the Hive JDBC access so given a Hadoop configuration stored in `conf` something like the code above will do the job:
+This case will be similar the Hive JDBC access so given a Hadoop configuration stored in `conf` something like the code below will do the job:
 
 ```java
 conf.set("hadoop.security.authentication", "kerberos");
 UserGroupInformation.setConfiguration(conf);
 UserGroupInformation.loginUserFromKeytab(principal, keytabPath);
-``` 
+```
 
 There is a complete example of this in the hadoop-quick-start project in this repository.
+
+
+# Cloudera Sandbox Installation
+
+Cloudera is distributed using CentOS, which keberos installation process is described above.
+
+In this case we will use the server `quickstart.cloudera` and the realm `QUICKSTART.CLOUDERA` so `/etc/krb5.conf` should look like:
+
+```bash
+[logging]
+ default = FILE:/var/log/krb5libs.log
+ kdc = FILE:/var/log/krb5kdc.log
+ admin_server = FILE:/var/log/kadmind.log
+
+[libdefaults]
+ default_realm = QUICKSTART.CLOUDERA
+ dns_lookup_realm = false
+ dns_lookup_kdc = false
+ ticket_lifetime = 24h
+ renew_lifetime = 7d
+ forwardable = true
+
+[realms]
+ QUICKSTART.CLOUDERA = {
+  kdc = quickstart.cloudera
+  admin_server = quickstart.cloudera
+ }
+
+[domain_realm]
+ .quickstart.cloudera = QUICKSTART.CLOUDERA
+ quickstart.cloudera = QUICKSTART.CLOUDERA
+```
+
+The command below will do all the substitutions automatically:
+
+`sed -i -e "s/kerberos.//g" -e "s/example.com/quickstart.cloudera/g" -e "s/EXAMPLE.COM/QUICKSTART.CLOUDERA/g" /etc/krb5.conf`
+
+Notice that this will require `quickstart.cloudera` to be in the `/etc/hosts` file.
+
+## Cloudera manager
+
+go to `administration -> security` and then `enable kerberos`
+
+You will be asked to check several ticks in order to proceed, if you have done the previous steps, you are good to go.
+
+In the next screen you will have:
+
+- _KDC Type_:
+- _KDC Server Host_: `quickstart.cloudera`
+- _Kerberos Security Realm_: `QUICKSTART.CLOUDERA`
+- _Kerberos Encryption Types_: set to `rc4-hmac`, no reason to change it.
+- _Renewal time_: 5 days, this can be set according to your needs.
+
+We will allow cloudera to manage the `krb5.conf` file.
+
+After the previous selection we need to provide the administrator principal we generated before `root/admin@QUICKSTART.CLOUDERA` and the password we set for it.
+
+For the rest of the sections nothing has to be changed, so continue, continue, continue...
+
+Once the process has finished the list of principals should look as follows:
+
+```bash
+HTTP/quickstart.cloudera@QUICKSTART.CLOUDERA
+K/M@QUICKSTART.CLOUDERA
+hbase/quickstart.cloudera@QUICKSTART.CLOUDERA
+hdfs/quickstart.cloudera@QUICKSTART.CLOUDERA
+hive/quickstart.cloudera@QUICKSTART.CLOUDERA
+hue/quickstart.cloudera@QUICKSTART.CLOUDERA
+impala/quickstart.cloudera@QUICKSTART.CLOUDERA
+kadmin/admin@QUICKSTART.CLOUDERA
+kadmin/changepw@QUICKSTART.CLOUDERA
+kadmin/quickstart.cloudera@QUICKSTART.CLOUDERA
+krbtgt/QUICKSTART.CLOUDERA@QUICKSTART.CLOUDERA
+mapred/quickstart.cloudera@QUICKSTART.CLOUDERA
+oozie/quickstart.cloudera@QUICKSTART.CLOUDERA
+root/admin@QUICKSTART.CLOUDERA
+solr/quickstart.cloudera@QUICKSTART.CLOUDERA
+spark/quickstart.cloudera@QUICKSTART.CLOUDERA
+sqoop2/quickstart.cloudera@QUICKSTART.CLOUDERA
+yarn/quickstart.cloudera@QUICKSTART.CLOUDERA
+zookeeper/quickstart.cloudera@QUICKSTART.CLOUDERA
+```
+
+In order to make development easier, we will generate a keytab will all the principals:
+```
+kadmin.local -q "xst -norandkey -k /tmp/full-keytab.keytab HTTP/quickstart.cloudera@QUICKSTART.CLOUDERA K/M@QUICKSTART.CLOUDERA hbase/quickstart.cloudera@QUICKSTART.CLOUDERA hdfs/quickstart.cloudera@QUICKSTART.CLOUDERA hive/quickstart.cloudera@QUICKSTART.CLOUDERA hue/quickstart.cloudera@QUICKSTART.CLOUDERA impala/quickstart.cloudera@QUICKSTART.CLOUDERA kadmin/admin@QUICKSTART.CLOUDERA kadmin/changepw@QUICKSTART.CLOUDERA kadmin/quickstart.cloudera@QUICKSTART.CLOUDERA krbtgt/QUICKSTART.CLOUDERA@QUICKSTART.CLOUDERA mapred/quickstart.cloudera@QUICKSTART.CLOUDERA oozie/quickstart.cloudera@QUICKSTART.CLOUDERA root/admin@QUICKSTART.CLOUDERA solr/quickstart.cloudera@QUICKSTART.CLOUDERA spark/quickstart.cloudera@QUICKSTART.CLOUDERA sqoop2/quickstart.cloudera@QUICKSTART.CLOUDERA yarn/quickstart.cloudera@QUICKSTART.CLOUDERA zookeeper/quickstart.cloudera@QUICKSTART.CLOUDERA"
+```
+
+```
+`kinit -k -t /tmp/full-keytab.keytab root/admin@QUICKSTART.CLOUDERA`
+```
+
+## Trying HDFS
+
+```
+hdfs dfs -ls /
+```
+
+## Trying Beeline
+
+```
+beeline --hiveconf hive.server2.authentication=kerberos --hiveconf hive.metastore.kerberos.keytab.file=/tmp/full-keytab.keytab --hiveconf hive.metastore.kerberos.principal=hive/quickstart.cloudera@QUICKSTART.CLOUDERA -u "jdbc:hive2://quickstart.cloudera:10000/default;principal=hive/quickstart.cloudera@QUICKSTART.CLOUDERA"
+```
+
+## Trying Spark
+
+```
+JAR=`ls /usr/lib/spark/lib/spark-examples*.jar | head -1`
+MASTER=spark://quickstart.cloudera:7077
+DEPLOY_MODE=cluster
+KEYTAB=/tmp/full-keytab.keytab
+PRINCIPAL=spark/quickstart.cloudera@QUICKSTART.CLOUDERA
+CLASS=org.apache.spark.examples.SparkPi
+CMD="
+spark-submit \
+--keytab $KEYTAB \
+--principal $PRINCIPAL \
+--deploy-mode $DEPLOY_MODE \
+--class $CLASS \
+--master $MASTER \
+$JAR \
+100
+"
+echo $CMD
+eval $CMD
+```
+- issues with kerberized instance
+
+```
+su spark
+hdfs dfs -mkdir -p /user/spark/share/lib/
+hdfs dfs -put /usr/lib/spark/assembly/lib/spark-assembly.jar /user/spark/share/lib/
+```
+
+# Issues
+
+## Permission issues
+
+```
+Exception in thread "main" org.apache.hadoop.security.AccessControlException: Permission denied: user=spark, access=WRITE, inode="/user/spark":hdfs:supergroup:drwxr-xr-x
+```
+
+By default in the cloudera sandbox the spark user doesn't have access to its home folder. From Hue, setting a password for the user `hdfs` and configuring it as super user, will allow to do any modification on the filesystem.
+
+## User not whitelisted
+
+```
+main : run as user is spark
+main : requested yarn user is spark
+Requested user spark is not whitelisted and has id 486,which is below the minimum allowed 1000
+```
+
+To fix this go to the YARN configuration and change the value of _Minimum User ID_ (`min.user.id`) to a smaller value. This is not a good practice but will be fine for a development cluster. In case you are going to be using the same user all the time, the field _Allowed System Users_ (`allowed.system.users`) will contain a list of whitelisted users so the user Id won't be checked.
+
+
 
 
 [kerberos-centos-doc]: https://www.centos.org/docs/5/html/5.1/Deployment_Guide/s1-kerberos-server.html
